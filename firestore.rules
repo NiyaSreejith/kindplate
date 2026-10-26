@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isVerifiedSeller() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/sellerProfiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/sellerProfiles/$(request.auth.uid)).data.verified == true;
+    }
+    function isAdmin() {
+      return isAuthenticated() && 
+        request.auth.token.admin == true;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) && 
+        // Users cannot self-award green tokens or self-assign admin roles
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['greenTokenBalance', 'badgeLevel', 'role']);
+      allow delete: if isAdmin();
+    }
+
+    // Seller Profiles
+    match /sellerProfiles/{sellerId} {
+      allow read: if true; // Public directory
+      allow create, update: if isAuthenticated() && (request.auth.uid == sellerId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Food Listings
+    match /foodListings/{listingId} {
+      allow read: if true; // Anyone can discover surplus food
+      allow create: if isVerifiedSeller() && request.resource.data.sellerId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.sellerId == request.auth.uid ||
+        // Trusted stock decrements during order checkout
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantityRemaining', 'urgencyLevel'])
+      );
+      allow delete: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        resource.data.courierId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.sellerId == request.auth.uid ||
+        resource.data.courierId == request.auth.uid ||
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Donation Requests (Free Food)
+    match /donationRequests/{requestId} {
+      allow read: if isAuthenticated() && (
+        resource.data.recipientId == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.resource.data.recipientId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.sellerId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Delivery Tasks
+    match /deliveryTasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.courierId == request.auth.uid ||
+        request.resource.data.courierId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Token Transactions Ledger
+    match /tokenTransactions/{txId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isAdmin(); // Only backend cloud functions may write ledger
+    }
+
+    // Rewards Catalogue
+    match /rewards/{rewardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Community Challenges
+    match /communityChallenges/{challengeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Impact Records
+    match /impactRecords/{recordId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notifId} {
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "foodListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "discountedPrice", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "foodListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isFreeDonation", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "foodListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "urgencyLevel", "order": "ASCENDING" },
+        { "fieldPath": "collectionDeadline", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sellerId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "deliveryTasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
